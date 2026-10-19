@@ -15,7 +15,9 @@ A partir de la Fase 2 en adelante, acá se registrarán los "blueprints"
 from flask import Flask, render_template, jsonify
 from config import config
 from utils.database import get_db_connection, init_db, contar_tablas
+from utils.helpers import login_required, usuario_actual
 from models.usuario import crear_admin_por_defecto
+from routes.auth import auth_bp, configurar_sesion
 
 def create_app():
     """
@@ -27,6 +29,7 @@ def create_app():
     app = Flask(__name__)
     app.config["SECRET_KEY"] = config.SECRET_KEY
     app.config["DEBUG"] = config.DEBUG
+    configurar_sesion(app)
 
     # Crea las tablas (si no existen) y el usuario admin por defecto.
     # Es seguro llamarlo cada vez que arranca la app: no duplica nada.
@@ -34,20 +37,17 @@ def create_app():
     crear_admin_por_defecto()
 
     # --------------------------------------------------------------
-    # A partir de la Fase 3 en adelante, acá se registran los blueprints:
+    # Blueprints registrados hasta ahora:
+    app.register_blueprint(auth_bp)
     #
-    # from routes.dashboard import dashboard_bp
-    # from routes.productos import productos_bp
-    # ...
-    # app.register_blueprint(dashboard_bp)
-    # app.register_blueprint(productos_bp)
-    #
-    # Por ahora (Fase 1) no existe ningún blueprint todavía.
+    # A partir de la Fase 4 en adelante, se agregan acá los de
+    # productos, categorías, proveedores, clientes, ventas, etc.
     # --------------------------------------------------------------
 
     @app.route("/")
+    @login_required
     def index():
-        """Pantalla temporal de verificación (Fase 1 y 2)."""
+        """Pantalla temporal de verificación (se reemplaza por el Dashboard en la Fase 7)."""
         try:
             conn = get_db_connection()
             conn.close()
@@ -62,6 +62,7 @@ def create_app():
             db_status=db_status,
             debug_mode=app.config["DEBUG"],
             total_tablas=total_tablas,
+            usuario=usuario_actual(),
         )
 
     @app.route("/api/health")
@@ -69,7 +70,7 @@ def create_app():
         """Endpoint simple para verificar por API que el servidor responde."""
         return jsonify({
             "status": "ok",
-            "fase": "2 - Base de datos y modelos",
+            "fase": "3 - Autenticacion",
             "sistema": "SIPOS",
             "tablas": contar_tablas(),
         })

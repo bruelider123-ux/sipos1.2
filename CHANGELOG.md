@@ -1,5 +1,31 @@
 # CHANGELOG - SIPOS
 
+## [Fase 3] - 2026-09-09 - Autenticación
+
+### Agregado
+- `utils/helpers.py`: decorador `login_required` para proteger rutas, y `usuario_actual()` para obtener el usuario de la sesión.
+- `routes/auth.py`: blueprint con `/login` (GET/POST) y `/logout`, usando sesiones nativas de Flask (cookies firmadas con `SECRET_KEY`).
+- `templates/login.html`: pantalla de login con Bootstrap.
+- `app.py`: registra el blueprint de auth, protege la ruta `/` con `@login_required`, y configura la duración de la sesión (`SESSION_LIFETIME_MINUTES` desde `.env`).
+- `templates/base.html`: renderiza los mensajes flash (avisos de éxito/error) en cualquier página.
+- `templates/fase1_ok.html`: ahora saluda al usuario logueado y muestra el botón "Cerrar sesión".
+
+### Decisiones técnicas
+- Se usan sesiones nativas de Flask (no una librería como Flask-Login) porque el sistema es de un solo usuario administrador por comercio en esta etapa, y las sesiones nativas ya cubren toda la necesidad: son simples, seguras (cookies firmadas) y no agregan una dependencia más.
+
+### Verificado (prueba automática de punta a punta)
+1. Acceder a `/` sin sesión → redirige a `/login`.
+2. Login con contraseña incorrecta → muestra "Usuario o contraseña incorrectos".
+3. Login con `admin` / `admin123` → redirige a `/`.
+4. Con sesión activa, `/` saluda "Hola, Administrador (admin)".
+5. `/logout` → redirige a `/login`.
+6. Después de cerrar sesión, `/` vuelve a exigir login.
+
+### Pendiente para próximas fases
+- CRUD de productos, categorías, proveedores, clientes (Fase 4).
+- `seed.py` con datos de prueba.
+- Descuento/aumento automático de stock al confirmar venta/compra (Fase 5-6).
+
 ## [Fase 2] - 2026-09-08 - Base de datos y modelos
 
 ### Agregado
