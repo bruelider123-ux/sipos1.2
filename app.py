@@ -14,7 +14,8 @@ A partir de la Fase 2 en adelante, acá se registrarán los "blueprints"
 
 from flask import Flask, render_template, jsonify
 from config import config
-from utils.database import get_db_connection
+from utils.database import get_db_connection, init_db, contar_tablas
+from models.usuario import crear_admin_por_defecto
 
 def create_app():
     """
@@ -26,6 +27,11 @@ def create_app():
     app = Flask(__name__)
     app.config["SECRET_KEY"] = config.SECRET_KEY
     app.config["DEBUG"] = config.DEBUG
+
+    # Crea las tablas (si no existen) y el usuario admin por defecto.
+    # Es seguro llamarlo cada vez que arranca la app: no duplica nada.
+    init_db()
+    crear_admin_por_defecto()
 
     # --------------------------------------------------------------
     # A partir de la Fase 3 en adelante, acá se registran los blueprints:
@@ -41,18 +47,21 @@ def create_app():
 
     @app.route("/")
     def index():
-        """Pantalla temporal de verificación de la Fase 1."""
+        """Pantalla temporal de verificación (Fase 1 y 2)."""
         try:
             conn = get_db_connection()
             conn.close()
             db_status = "✅ Conectado correctamente"
+            total_tablas = contar_tablas()
         except Exception as e:
             db_status = f"❌ Error: {e}"
+            total_tablas = 0
 
         return render_template(
             "fase1_ok.html",
             db_status=db_status,
             debug_mode=app.config["DEBUG"],
+            total_tablas=total_tablas,
         )
 
     @app.route("/api/health")
@@ -60,8 +69,9 @@ def create_app():
         """Endpoint simple para verificar por API que el servidor responde."""
         return jsonify({
             "status": "ok",
-            "fase": "1 - Arquitectura y configuracion",
+            "fase": "2 - Base de datos y modelos",
             "sistema": "SIPOS",
+            "tablas": contar_tablas(),
         })
 
     return app
