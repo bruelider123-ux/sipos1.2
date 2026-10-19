@@ -40,9 +40,5 @@ class Config:
     STOCK_BAJO_PORCENTAJE = float(os.environ.get("STOCK_BAJO_PORCENTAJE", "0.5"))   # 50% del mínimo
     STOCK_CRITICO_PORCENTAJE = float(os.environ.get("STOCK_CRITICO_PORCENTAJE", "0.2"))  # 20% del mínimo
 
-    # Si es False (por defecto), el sistema NO permite confirmar una venta
-    # que deje el stock de algún producto por debajo de cero.
-    PERMITIR_STOCK_NEGATIVO = os.environ.get("PERMITIR_STOCK_NEGATIVO", "False") == "True"
-
 
 config = Config()
