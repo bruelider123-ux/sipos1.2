@@ -18,6 +18,10 @@ from utils.database import get_db_connection, init_db, contar_tablas
 from utils.helpers import login_required, usuario_actual
 from models.usuario import crear_admin_por_defecto
 from routes.auth import auth_bp, configurar_sesion
+from routes.categorias import categorias_bp
+from routes.proveedores import proveedores_bp
+from routes.clientes import clientes_bp
+from routes.productos import productos_bp
 
 def create_app():
     """
@@ -39,9 +43,13 @@ def create_app():
     # --------------------------------------------------------------
     # Blueprints registrados hasta ahora:
     app.register_blueprint(auth_bp)
+    app.register_blueprint(categorias_bp)
+    app.register_blueprint(proveedores_bp)
+    app.register_blueprint(clientes_bp)
+    app.register_blueprint(productos_bp)
     #
-    # A partir de la Fase 4 en adelante, se agregan acá los de
-    # productos, categorías, proveedores, clientes, ventas, etc.
+    # A partir de la Fase 5 en adelante, se agregan acá los de
+    # ventas, compras, stock, etc.
     # --------------------------------------------------------------
 
     @app.route("/")
@@ -70,7 +78,7 @@ def create_app():
         """Endpoint simple para verificar por API que el servidor responde."""
         return jsonify({
             "status": "ok",
-            "fase": "3 - Autenticacion",
+            "fase": "4 - CRUD de productos, categorias, proveedores y clientes",
             "sistema": "SIPOS",
             "tablas": contar_tablas(),
         })

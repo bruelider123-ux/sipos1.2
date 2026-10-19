@@ -1,5 +1,32 @@
 # CHANGELOG - SIPOS
 
+## [Fase 4] - 2026-09-10 - CRUD de productos, categorías, proveedores y clientes
+
+### Agregado
+- `routes/categorias.py` + `templates/categorias.html`: listar, crear, editar, eliminar (con modales de Bootstrap).
+- `routes/proveedores.py` + `templates/proveedores.html`: listar, crear, editar, activar/desactivar (no se elimina un proveedor con historial).
+- `routes/clientes.py` + `templates/clientes.html`: listar, crear, editar, eliminar.
+- `routes/productos.py` + `templates/productos.html` + `templates/producto_form.html` + `templates/producto_movimientos.html`: CRUD completo de productos con:
+  - Búsqueda por nombre/código y filtros por categoría/proveedor.
+  - Tabla con Código, Producto, Categoría, Precio, Stock, Stock mínimo, Estado (🟢🟡🔴⚫) y Acciones.
+  - Activar/desactivar (no se elimina un producto con historial).
+  - Pantalla de historial de movimientos de stock por producto.
+- `templates/base.html`: se agregó el menú lateral (Dashboard, Productos, Categorías, Proveedores, Clientes ya funcionan; Ventas/Compras/Stock/Predicciones/Reportes/Configuración aparecen deshabilitados hasta sus fases correspondientes, para no tener links rotos).
+- `templates/fase1_ok.html`: ahora es una mini página de inicio con accesos directos a las 4 secciones nuevas.
+- `seed.py`: carga datos de prueba (4 categorías, 3 proveedores, 3 clientes, 7 productos con distintos niveles de stock para poder ver los 4 estados). Se puede correr varias veces sin duplicar datos. Todos los productos de prueba usan el prefijo de código `DEMO-` para identificarse claramente como datos de prueba.
+
+### Verificado (pruebas automáticas)
+- Los 4 listados muestran los datos de `seed.py` correctamente.
+- Crear categoría funciona; crear una categoría con nombre repetido se rechaza correctamente (restricción UNIQUE) sin romper la página.
+- Filtrar productos por categoría funciona.
+- Crear, editar, desactivar/activar un producto funcionan; un producto desactivado desaparece del listado normal pero se puede ver tildando "Mostrar también productos desactivados".
+- El historial de movimientos de un producto sin movimientos muestra el mensaje correcto (todavía no hay ventas/compras que generen movimientos, eso es la Fase 5-6).
+
+### Pendiente para próximas fases
+- Módulo de ventas (punto de venta) y compras, con descuento/aumento automático de stock (Fase 5).
+- Alertas automáticas de stock bajo/crítico en el dashboard (Fase 6-7).
+- Ampliar `seed.py` con historial de ventas para poder probar el módulo de predicción (Fase 8).
+
 ## [Fase 3] - 2026-09-09 - Autenticación
 
 ### Agregado

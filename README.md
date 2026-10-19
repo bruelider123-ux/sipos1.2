@@ -91,7 +91,10 @@ copy .env.example .env
 Se implementa en la Fase 2. Por ahora, al ejecutar `app.py` se crea automáticamente el archivo vacío `database/sipos.db`.
 
 ### 8. Ejecutar seed.py (datos de prueba)
-Se implementa en la Fase 2/4. Todavía no existe en esta entrega.
+```powershell
+python seed.py
+```
+Esto carga 4 categorías, 3 proveedores, 3 clientes y 7 productos de prueba (identificados con código `DEMO-`), con distintos niveles de stock para poder ver los 4 estados (🟢normal, 🟡bajo, 🔴crítico, ⚫sin stock).
 
 ### 9. Ejecutar la aplicación
 ```powershell
