@@ -12,16 +12,23 @@ A partir de la Fase 2 en adelante, acá se registrarán los "blueprints"
 (módulos de rutas) de productos, ventas, compras, dashboard, etc.
 """
 
-from flask import Flask, render_template, jsonify
+from flask import Flask, jsonify
 from config import config
-from utils.database import get_db_connection, init_db, contar_tablas
-from utils.helpers import login_required, usuario_actual
+from utils.database import init_db, contar_tablas
 from models.usuario import crear_admin_por_defecto
 from routes.auth import auth_bp, configurar_sesion
 from routes.categorias import categorias_bp
 from routes.proveedores import proveedores_bp
 from routes.clientes import clientes_bp
 from routes.productos import productos_bp
+from routes.ventas import ventas_bp
+from routes.compras import compras_bp
+from routes.stock import stock_bp
+from routes.dashboard import dashboard_bp
+from routes.prediccion import prediccion_bp
+from routes.reportes import reportes_bp
+from routes.configuracion import configuracion_bp
+from utils.formato import cantidad, pesos, fecha, fecha_hora
 
 def create_app():
     """
@@ -35,6 +42,12 @@ def create_app():
     app.config["DEBUG"] = config.DEBUG
     configurar_sesion(app)
 
+    # Formato argentino de números y plata en las plantillas: {{ valor|pesos }} y {{ valor|cantidad }}
+    app.add_template_filter(cantidad, "cantidad")
+    app.add_template_filter(pesos, "pesos")
+    app.add_template_filter(fecha, "fecha")
+    app.add_template_filter(fecha_hora, "fecha_hora")
+
     # Crea las tablas (si no existen) y el usuario admin por defecto.
     # Es seguro llamarlo cada vez que arranca la app: no duplica nada.
     init_db()
@@ -47,38 +60,24 @@ def create_app():
     app.register_blueprint(proveedores_bp)
     app.register_blueprint(clientes_bp)
     app.register_blueprint(productos_bp)
+    app.register_blueprint(ventas_bp)
+    app.register_blueprint(compras_bp)
+    app.register_blueprint(stock_bp)
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(prediccion_bp)
+    app.register_blueprint(reportes_bp)
+    app.register_blueprint(configuracion_bp)
     #
-    # A partir de la Fase 5 en adelante, se agregan acá los de
-    # ventas, compras, stock, etc.
+    # A partir de la Fase 11 en adelante, se agregan mejoras de diseño
+    # y UX sobre lo ya construido.
     # --------------------------------------------------------------
-
-    @app.route("/")
-    @login_required
-    def index():
-        """Pantalla temporal de verificación (se reemplaza por el Dashboard en la Fase 7)."""
-        try:
-            conn = get_db_connection()
-            conn.close()
-            db_status = "✅ Conectado correctamente"
-            total_tablas = contar_tablas()
-        except Exception as e:
-            db_status = f"❌ Error: {e}"
-            total_tablas = 0
-
-        return render_template(
-            "fase1_ok.html",
-            db_status=db_status,
-            debug_mode=app.config["DEBUG"],
-            total_tablas=total_tablas,
-            usuario=usuario_actual(),
-        )
 
     @app.route("/api/health")
     def health():
         """Endpoint simple para verificar por API que el servidor responde."""
         return jsonify({
             "status": "ok",
-            "fase": "4 - CRUD de productos, categorias, proveedores y clientes",
+            "fase": "11 - Diseno y mejoras de interfaz",
             "sistema": "SIPOS",
             "tablas": contar_tablas(),
         })

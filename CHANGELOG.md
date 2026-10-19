@@ -1,5 +1,176 @@
 # CHANGELOG - SIPOS
 
+## [Fase 11] - 2026-10-15 - Rediseño de la interfaz
+
+### Rediseño visual (a pedido: que no parezca generado por IA)
+- Nueva identidad, pensada para un comercio: verde profundo para el menú y las acciones, mostaza solo para lo que pide atención, fondo gris verdoso suave. Se abandonó el estilo de fábrica de Bootstrap (menú azul oscuro, tarjetas iguales con sombra, verde turquesa).
+- Tipografías: Archivo Narrow para títulos y cifras, IBM Plex Sans para el texto.
+- Se eliminaron todos los emojis de la interfaz. Los íconos del menú pasan a ser íconos de línea (Bootstrap Icons) y el semáforo de stock (normal, bajo, crítico, sin stock) pasa a puntos de color con texto.
+- Menos "cajitas": tablas con líneas finas directamente sobre el fondo, y paneles solo donde hace falta agrupar. Radios de borde distintos según el elemento.
+- Menú lateral agrupado por tarea (inicio; ventas y compras; catálogo y stock; análisis; configuración) que se pliega en pantallas chicas.
+- Pantalla de ingreso nueva, a pantalla completa, con panel de marca.
+- Pantalla de Inicio rediseñada: arranca con "Para reponer esta semana" (usa la recomendación del módulo de IA), sigue con las cifras, los avisos y los cuatro gráficos. Saludo según la hora y fecha en castellano.
+- Etiqueta de precio mostaza para la cantidad a comprar: es el único adorno del sistema y está a propósito sobre lo más importante.
+- Todo el texto de la interfaz se revisó en un tono más directo.
+
+### Formato argentino
+- Plata: `$7.000` y `$1.234,50` (antes `$7000.00`). Cantidades sin ".0" sobrante. Fechas `14/10/2026`.
+- Aplica a pantallas, carritos de venta y compra, y a los PDF, Excel y CSV exportados (que además muestran los estados con palabras en vez de `sin_stock`).
+- Nuevo `utils/formato.py` con las funciones `pesos`, `cantidad`, `fecha` y `fecha_hora`, registradas como filtros de las plantillas.
+
+### Otros cambios
+- Nueva pantalla de Configuración (solo lectura) con los parámetros vigentes. Reemplaza al ítem apagado "(próx.)" del menú.
+- La recomendación de reposición redondea hacia arriba la cantidad a comprar en productos que se venden por unidad, caja o paquete (antes podía recomendar "50,5" panes). Los productos por peso o volumen conservan decimales.
+- `seed.py`: la leche de 1 L y el arroz de 1 kg pasan a venderse "por unidad", como en un estante real.
+- Se eliminó el campo `icono` (emoji) de las alertas de `services/alertas.py`.
+- Nuevos archivos: `templates/_componentes.html` (piezas reutilizables: enlace del menú, logo, semáforo), `templates/configuracion.html`, `routes/configuracion.py`.
+- README reescrito por completo (estaba desactualizado): problema que resuelve, objetivos, arquitectura, base de datos, IA, instalación para CMD y PowerShell, usuario de prueba.
+
+### Verificado
+- Las 20 pantallas del sistema responden correctamente y no hay errores en el log del servidor.
+- Semáforo con los 4 estados, reposición con cantidades enteras en productos por unidad, flujo completo de venta (comprobante, total y "Vendido hoy" coinciden), y PDF, Excel y CSV válidos con el nuevo formato.
+- No quedan emojis, flechas ni puntos medios en plantillas, servicios, rutas, estilos ni scripts.
+- Limitación: en el entorno de desarrollo no hay navegador, así que la apariencia no se pudo revisar con capturas; está pendiente de revisión visual en un navegador real.
+
+### Pendiente
+- Fase 12: pruebas finales y corrección de errores (incluye los ajustes visuales que surjan de la primera revisión en el navegador).
+
+## [Fase 10] - 2026-10-06 - Reportes y exportaciones
+
+### Agregado
+- `services/reportes.py`: calcula los 8 reportes pedidos (ventas por período, productos más/menos vendidos, stock actual, stock crítico, compras por período, ventas por categoría, rentabilidad estimada), todos con la misma estructura de columnas/filas para poder reutilizar el código de exportación.
+- Selector de período con los 5 presets pedidos: Hoy, Últimos 7 días, Este mes, Mes anterior, Rango personalizado.
+- `services/exportacion.py`: exporta cualquier reporte a **PDF** (ReportLab), **Excel** (OpenPyXL, con encabezado destacado y ancho de columna automático) y **CSV** (con BOM UTF-8 para que Excel en Windows muestre bien los acentos).
+- `routes/reportes.py` + `templates/reportes.html`: pantalla `/reportes` con el selector, la tabla en pantalla, y los 3 botones de descarga.
+- Menú lateral: se habilita el link de Reportes.
+
+### Decisiones técnicas
+- El reporte de "Rentabilidad estimada" usa el precio de compra ACTUAL del producto (no el costo histórico real de cada compra puntual), porque el sistema no guarda ese dato por separado. Por eso el reporte se llama explícitamente "estimada": es una aproximación razonable para un comercio chico, no un cálculo contable exacto.
+- "Productos menos vendidos" incluye también productos con 0 ventas en el período (no solo los que vendieron poco), para que sea realmente útil detectar qué no se está moviendo.
+
+### Verificado (pruebas automáticas)
+- Los 8 tipos de reporte cargan correctamente en pantalla.
+- Los 3 formatos de exportación generan archivos reales y válidos (confirmado con el comando `file`: PDF real, Excel 2007+ real, CSV con acentos correctos).
+- Un reporte sin datos (ej. ventas de "hoy" sin ventas registradas) muestra el mensaje correcto en pantalla y se puede exportar igual sin romperse.
+- El rango de fechas personalizado funciona correctamente.
+
+### Pendiente para próximas fases
+- Mejoras de diseño y experiencia de usuario (Fase 11).
+- Pruebas finales y corrección de errores (Fase 12).
+
+## [Fase 9] - 2026-09-29 - Recomendación de reposición
+
+### Agregado
+- `services/reposicion.py`: calcula, para cada producto, `demanda_predicha (7 días) + stock_seguridad − stock_actual`. Si el resultado es mayor a 0, recomienda comprar esa cantidad; si no, indica que no hace falta reponer todavía.
+- **Stock de seguridad** (sección 15 de la consigna): si el producto tiene suficiente historial, se calcula estadísticamente (`z × desviación estándar de la demanda diaria × √días de cobertura`), lo que tiene en cuenta qué tan irregular es la demanda de ESE producto en particular. Si no hay suficiente historial, se usa un método simplificado (mitad del stock mínimo) y se marca explícitamente como estimación, nunca como un cálculo estadístico real.
+- `routes/prediccion.py`: nueva ruta `/predicciones/reposicion`.
+- `templates/reposicion.html`: tabla con Producto, Stock actual, Stock mínimo, Demanda estimada, Stock recomendado, Cantidad a comprar y Prioridad (🔴Alta / 🟡Media / 🟢Baja), con un aviso visual (⚠️ estimado) en los productos donde el stock de seguridad se calculó con el método simplificado.
+- Link "Ver recomendación de reposición" agregado en la pantalla de Predicciones IA.
+
+### Verificado (pruebas automáticas)
+- Con los datos de `seed.py`, Pan Lactal (sin stock, con historial real) recomendó reponer 49 unidades con prioridad Alta (demanda estimada 39.6 + stock de seguridad estadístico 9.4).
+- Detergente (sin historial) se marcó correctamente con el aviso "⚠️ estimado" en lugar de mostrar un cálculo estadístico inexistente.
+- Las 7 recomendaciones se ordenaron correctamente por prioridad (alta → media → baja).
+
+### Pendiente para próximas fases
+- Reportes exportables en PDF/Excel/CSV (Fase 10).
+- Mejoras de diseño y UX (Fase 11).
+
+## [Fase 8] - 2026-09-29 - Machine Learning y predicciones
+
+### Agregado
+- **Historial de ventas de prueba**: se extendió `seed.py` para generar ~120 días de ventas simuladas (con más ventas los fines de semana en varios productos), necesarias para entrenar el modelo. A propósito, el Detergente queda sin ningún historial y el Queso con historial muy escaso, para poder probar los casos de "datos insuficientes".
+- Se agregó un parámetro `fecha` opcional en toda la cadena venta → movimiento de stock (`models/venta.py`, `models/movimiento_stock.py`, `services/inventario.py`, `services/ventas.py`), usado solo por `seed.py` para poder cargar ventas con fecha pasada.
+- `ml/entrenamiento.py`: arma un dataset diario por producto (completando con 0 los días sin ventas) y entrena una **Regresión Lineal** por producto (modelo simple y explicable, como pide la consigna), evaluada con MAE sobre los últimos días. Los modelos se guardan todos juntos en `ml/modelo_stock.pkl`. Un producto con menos de 20 días con venta no se entrena (se considera con datos insuficientes).
+- `ml/prediccion.py`: genera la predicción de demanda para 7 y 30 días. Si el producto no tiene modelo entrenado, usa un método simplificado (promedio de las ventas disponibles) y lo aclara explícitamente; si no tiene ninguna venta, informa que no se puede predecir nada, sin inventar números.
+- `routes/prediccion.py` + `templates/predicciones.html`: pantalla `/predicciones` con selector de producto, gráfico de ventas históricas, resultado de la predicción (próximos 7 días, próximos 30 días, demanda estimada diaria), información del modelo (modelo utilizado, registros usados, error aproximado, fecha de entrenamiento, producto analizado), botón para reentrenar, y una sección "¿Cómo funciona la predicción?" pensada para poder explicarlo oralmente ante los docentes.
+- Menú lateral: se habilita el link de Predicciones IA.
+- `requirements.txt`: se agrega `joblib` de forma explícita (se usa directamente para guardar/cargar los modelos).
+
+### Decisiones técnicas
+- Se usa Regresión Lineal como primer modelo (tal como sugiere la consigna: "comenzar con un modelo sencillo y explicable"), con variables de fecha (día de la semana, día del mes, mes, días desde el inicio del historial). Queda como mejora futura evaluar Random Forest o Gradient Boosting y comparar el error contra este modelo base.
+- El umbral de "datos suficientes" se fijó en 20 días con venta real (no simplemente días de calendario), para evitar entrenar un modelo con muy pocos puntos de datos reales aunque estén repartidos en un rango de fechas amplio.
+
+### Verificado (pruebas automáticas)
+- `seed.py` genera 478 ventas históricas en ~3 segundos.
+- El entrenamiento generó modelos para 5 de los 7 productos (los 2 restantes quedaron correctamente afuera por datos insuficientes).
+- Se probaron los 3 escenarios en la pantalla de predicciones: producto con buen historial (predicción con Regresión Lineal), producto con historial escaso (promedio simple, aclarado), producto sin ventas (mensaje de datos insuficientes, sin predicción numérica).
+- El botón de reentrenar funciona, el gráfico histórico muestra datos reales, y el resto del sistema (Dashboard, Stock) sigue funcionando sin problemas.
+
+### Pendiente para próximas fases
+- Recomendación automática de cuánto reponer, combinando la predicción con el stock actual y un stock de seguridad (Fase 9).
+- Reportes exportables en PDF/Excel/CSV (Fase 10).
+
+## [Fase 7] - 2026-09-23 - Dashboard y gráficos
+
+### Agregado
+- `services/dashboard.py`: calcula las 7 tarjetas de resumen (total de productos, con stock bajo, sin stock, valor del inventario a precio de costo, ventas del día, ventas del mes, compras del mes) y los datos de los 4 gráficos, todo con consultas reales a la base de datos.
+- `routes/dashboard.py` + `templates/dashboard.html`: reemplaza la pantalla temporal de verificación que se usaba desde la Fase 1. Incluye:
+  - Gráfico 1: ventas de los últimos 7 días (incluye los días sin ventas, en 0).
+  - Gráfico 2: productos más vendidos (histórico).
+  - Gráfico 3: productos en stock crítico o agotados.
+  - Gráfico 4: evolución de ventas de los últimos 6 meses.
+  - Las 5 alertas más urgentes (reutilizando `services/alertas.py` de la Fase 6), con link a la pantalla de Stock para ver todas.
+  - Los gráficos usan Chart.js (ya cargado desde la Fase 1) y se ocultan con un mensaje claro cuando todavía no hay datos suficientes (en vez de mostrar un gráfico vacío o inventado).
+- Se eliminó `templates/fase1_ok.html` (ya no se usaba, estaba anunciado que se reemplazaría en esta fase).
+- La ruta principal (`/`) ahora vive en `routes/dashboard.py` como `dashboard.index`, en vez de estar declarada directamente en `app.py`.
+
+### Verificado (pruebas automáticas)
+- Con los datos de `seed.py` más una venta de prueba, las tarjetas mostraron los números exactos esperados (7 productos, 3 con stock bajo, 1 sin stock, valor de inventario y ventas del día/mes coincidiendo con lo vendido).
+- Los 4 gráficos recibieron datos correctos y ordenados (por ejemplo, el gráfico de stock crítico mostró primero el producto con menos stock).
+- Arranque limpio de cero sin errores en el log.
+
+### Pendiente para próximas fases
+- Módulo de predicción de demanda con Machine Learning (Fase 8).
+- Recomendación automática de reposición de stock (Fase 9).
+- Reportes exportables en PDF/Excel/CSV (Fase 10).
+
+## [Fase 6] - 2026-09-17 - Control de stock y alertas
+
+### Agregado
+- `services/alertas.py`: detecta automáticamente stock bajo, stock crítico, productos agotados, ventas inusualmente altas (comparando la última semana contra el promedio histórico) y productos con baja rotación (30 días sin ventas). Cuando no hay suficiente historial para un cálculo, esa alerta simplemente no se genera (nunca se inventan datos).
+- `routes/stock.py` + `templates/stock.html`: pantalla de Stock que muestra las alertas activas y permite hacer un **ajuste manual** de stock sobre cualquier producto (sumar o restar, con motivo obligatorio). Todo ajuste se registra en `movimientos_stock` con tipo `AJUSTE`.
+- `services/inventario.py` ya tenía `registrar_ajuste()` desde la Fase 5; en esta fase se lo conecta por primera vez a una pantalla real.
+- Menú lateral: se habilita el link de Stock.
+
+### Verificado (pruebas automáticas)
+- Con los datos de `seed.py`, el sistema detecta correctamente las 4 alertas esperadas: 1 producto agotado (Pan Lactal), 1 en estado crítico (Queso), 2 en estado bajo (Gaseosa Cola, Detergente).
+- Un ajuste manual válido (con motivo) descuenta el stock correctamente y queda en el historial del producto con su motivo.
+- Un ajuste sin motivo se rechaza y no modifica el stock.
+
+### Pendiente para próximas fases
+- Mostrar las alertas también en el Dashboard principal, con gráficos (Fase 7).
+- Módulo de predicción de demanda con Machine Learning (Fase 8).
+
+## [Fase 5] - 2026-09-11 - Ventas y compras
+
+### Agregado
+- `services/inventario.py`: punto único para modificar stock (`registrar_entrada`, `registrar_salida`, `registrar_ajuste`). Toda modificación de stock queda siempre registrada en `movimientos_stock`, sin excepciones.
+- `services/ventas.py`: `confirmar_venta()` valida stock disponible, crea la venta y descuenta stock, todo o nada (si algo falla al descontar, se revierte la venta).
+- `services/compras.py`: `confirmar_compra()` crea la compra y aumenta el stock.
+- `routes/ventas.py` + `templates/venta_pos.html`: punto de venta con carrito armado en el navegador (buscar producto, agregar, modificar cantidad, elegir cliente y método de pago), confirmado por AJAX sin recargar la página.
+- `routes/compras.py` + `templates/compra_form.html`: mismo esquema para compras, con precio de compra editable por línea.
+- `templates/venta_detalle.html` y `templates/compra_detalle.html`: comprobantes.
+- `templates/ventas.html` y `templates/compras.html`: listados.
+- `config.py`: nueva variable `PERMITIR_STOCK_NEGATIVO` (por defecto `False`) para decidir si se puede vender sin stock suficiente.
+- Menú lateral: se habilitan los links de Ventas y Compras.
+
+### Decisiones técnicas
+- El carrito de venta/compra se arma 100% en el navegador con JavaScript simple (sin frameworks), y recién se manda al servidor al confirmar. Esto evita crear registros a medias en la base de datos mientras el usuario todavía está eligiendo productos.
+- Si el descuento/aumento de stock fallara después de haber creado la venta o compra (caso muy raro, pero posible), el sistema revierte automáticamente la venta/compra para no dejar datos inconsistentes.
+
+### Verificado (pruebas automáticas de punta a punta)
+1. Confirmar una venta válida descuenta el stock correctamente (4 → 2 unidades).
+2. Intentar vender más cantidad de la disponible se rechaza (HTTP 400) sin modificar el stock ni crear la venta.
+3. Confirmar una compra aumenta el stock correctamente (2 → 12 unidades).
+4. Los comprobantes de venta y compra muestran los datos correctos.
+5. El historial de movimientos del producto muestra tanto la SALIDA (venta) como la ENTRADA (compra), con la referencia correcta ("Venta #1", "Compra #1").
+
+### Pendiente para próximas fases
+- Alertas automáticas de stock bajo/crítico visibles en el dashboard (Fase 6-7).
+- Ajuste manual de stock desde la pantalla de Stock (Fase 6).
+- Dashboard con gráficos reales (Fase 7).
+
 ## [Fase 4] - 2026-09-10 - CRUD de productos, categorías, proveedores y clientes
 
 ### Agregado
